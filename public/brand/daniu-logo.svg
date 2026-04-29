@@ -1,0 +1,15 @@
+﻿<svg width="214" height="64" viewBox="0 0 214 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="大牛 Daniu AI">
+  <defs>
+    <linearGradient id="horn" x1="10" y1="18" x2="72" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFE0AE"/>
+      <stop offset="0.22" stop-color="#B86B35"/>
+      <stop offset="0.5" stop-color="#FFD39A"/>
+      <stop offset="0.78" stop-color="#B86B35"/>
+      <stop offset="1" stop-color="#FFE0AE"/>
+    </linearGradient>
+  </defs>
+  <path d="M10 22C15 39 22 45 35 45H42C46 45 48 47 49 51C50 55 53 57 58 57H64C69 57 72 55 73 51C74 47 76 45 80 45H87C100 45 107 39 112 22" transform="translate(-6 -5) scale(.72 .72)" stroke="url(#horn)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M10 22C15 39 22 45 35 45H42C46 45 48 47 49 51C50 55 53 57 58 57H64C69 57 72 55 73 51C74 47 76 45 80 45H87C100 45 107 39 112 22" transform="translate(-6 -5) scale(.72 .72)" stroke="#FFF3DC" stroke-opacity=".72" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="84" y="29" fill="#FFF8EC" font-family="Arial, sans-serif" font-size="22" font-weight="800" letter-spacing="1.8">DANIU</text>
+  <text x="84" y="47" fill="#F3CC8D" font-family="Arial, sans-serif" font-size="9" font-weight="700" letter-spacing="2.4">EXPERT MODEL AI</text>
+</svg>
