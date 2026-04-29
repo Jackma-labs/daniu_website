@@ -32,13 +32,23 @@ type ChatResult = {
   provider: "local" | "minimax";
   model: string;
   content: string;
+  sources?: KnowledgeSource[];
 };
 
 type UiMessage = ChatMessage & {
   id: string;
   provider?: ChatResult["provider"];
   model?: string;
+  sources?: KnowledgeSource[];
   error?: boolean;
+};
+
+type KnowledgeSource = {
+  id: string;
+  name: string;
+  domain: string;
+  summary: string;
+  chunks: number;
 };
 
 const examples = [
@@ -114,6 +124,7 @@ export function AskConsole() {
           content: result.content,
           provider: result.provider,
           model: result.model,
+          sources: result.sources,
         },
       ]);
     } catch (requestError) {
@@ -167,6 +178,16 @@ export function AskConsole() {
                   <p className={cn("mt-1 whitespace-pre-wrap text-sm leading-7", message.error ? "text-destructive" : "text-muted-foreground")}>
                     {message.content}
                   </p>
+                  {message.sources?.length ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {message.sources.map((source) => (
+                        <Badge key={source.id} variant="outline" className="gap-1.5 rounded-full text-[11px] text-muted-foreground">
+                          <FileText className="size-3" strokeWidth={1.8} />
+                          {source.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             ))}
