@@ -55,8 +55,8 @@ function buildSourcePrompt(sources: KnowledgeSource[]): ChatMessage | null {
 
   return {
     role: "system",
-    content: `以下是本地知识库检索到的候选来源。回答时优先参考这些来源，并在答案末尾用“参考资料：”列出文件名。\n${sources
-      .map((source, index) => `${index + 1}. ${source.name}｜${source.domain}｜${source.summary}`)
+    content: `以下是本地知识库检索到的候选片段。回答时优先参考这些片段，并在答案末尾用“参考资料：”列出文件名。\n${sources
+      .map((source, index) => `${index + 1}. ${source.name}｜${source.domain}｜片段 ${source.chunkIndex || "-"}｜${source.snippet}`)
       .join("\n")}`,
   };
 }

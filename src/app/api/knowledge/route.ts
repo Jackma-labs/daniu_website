@@ -1,9 +1,9 @@
-import { getKnowledgeItems, getKnowledgeStats } from "@/lib/knowledge/store";
+import { getKnowledgeStats, getPublicKnowledgeItems } from "@/lib/knowledge/store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const [items, stats] = await Promise.all([getKnowledgeItems(), getKnowledgeStats()]);
+  const [items, stats] = await Promise.all([getPublicKnowledgeItems(), getKnowledgeStats()]);
   return Response.json({ items, stats });
 }

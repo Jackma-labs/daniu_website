@@ -1,12 +1,12 @@
 ﻿import { Sparkles } from "lucide-react";
 import { LearnConsole } from "@/components/app/learn-console";
 import { Badge } from "@/components/ui/badge";
-import { getKnowledgeItems, getKnowledgeStats } from "@/lib/knowledge/store";
+import { getKnowledgeStats, getPublicKnowledgeItems } from "@/lib/knowledge/store";
 
 export const dynamic = "force-dynamic";
 
 export default async function LearnPage() {
-  const [items, stats] = await Promise.all([getKnowledgeItems(), getKnowledgeStats()]);
+  const [items, stats] = await Promise.all([getPublicKnowledgeItems(), getKnowledgeStats()]);
 
   return (
     <section className="flex min-h-[calc(100dvh-4rem)] flex-col items-center px-4 pb-12 pt-12 md:px-6 md:pt-16">

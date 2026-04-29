@@ -45,10 +45,13 @@ type UiMessage = ChatMessage & {
 
 type KnowledgeSource = {
   id: string;
+  itemId: string;
   name: string;
   domain: string;
   summary: string;
   chunks: number;
+  snippet: string;
+  chunkIndex: number;
 };
 
 const examples = [
@@ -184,6 +187,7 @@ export function AskConsole() {
                         <Badge key={source.id} variant="outline" className="gap-1.5 rounded-full text-[11px] text-muted-foreground">
                           <FileText className="size-3" strokeWidth={1.8} />
                           {source.name}
+                          {source.chunkIndex ? ` · 片段 ${source.chunkIndex}` : ""}
                         </Badge>
                       ))}
                     </div>

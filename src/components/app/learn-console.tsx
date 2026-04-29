@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import type { KnowledgeItem } from "@/lib/knowledge/store";
+import type { PublicKnowledgeItem } from "@/lib/knowledge/store";
 
 type KnowledgeStats = {
   total: number;
@@ -23,7 +23,7 @@ const statusText = {
   needs_review: "待确认",
 };
 
-export function LearnConsole({ initialItems, initialStats }: { initialItems: KnowledgeItem[]; initialStats: KnowledgeStats }) {
+export function LearnConsole({ initialItems, initialStats }: { initialItems: PublicKnowledgeItem[]; initialStats: KnowledgeStats }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [items, setItems] = useState(initialItems);
   const [stats, setStats] = useState(initialStats);
@@ -47,7 +47,7 @@ export function LearnConsole({ initialItems, initialStats }: { initialItems: Kno
         method: "POST",
         body: formData,
       });
-      const data = (await response.json()) as { items?: KnowledgeItem[]; error?: string };
+      const data = (await response.json()) as { items?: PublicKnowledgeItem[]; error?: string };
 
       if (!response.ok) {
         throw new Error(data.error ?? "上传失败");
