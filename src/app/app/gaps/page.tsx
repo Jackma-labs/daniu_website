@@ -1,4 +1,5 @@
-﻿import { ArrowUpRight, ClipboardList, FilePlus2, SearchX } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpRight, ClipboardList, FilePlus2, SearchX } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,20 +40,20 @@ export default function GapsPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between gap-5 p-5">
+                <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
                   <div className="min-w-0">
                     <h2 className="text-base font-medium tracking-tight">{question}</h2>
                     <p className="mt-2 text-sm text-muted-foreground">{reason}</p>
                     <Badge variant="outline" className="mt-3 rounded-full">{action}</Badge>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <Button size="sm" variant="secondary" className="gap-1.5">
-                      <FilePlus2 className="size-4" strokeWidth={1.8} />
+                    <Button size="sm" variant="secondary" nativeButton={false} render={<Link href="/app/learn" />}>
+                      <FilePlus2 data-icon="inline-start" />
                       补资料
                     </Button>
-                    <span className="hidden size-8 items-center justify-center rounded-full border text-muted-foreground transition group-hover:bg-primary group-hover:text-primary-foreground sm:flex">
-                      <ArrowUpRight className="size-4" strokeWidth={1.8} />
-                    </span>
+                    <Button variant="outline" size="icon-sm" aria-label="去补资料" nativeButton={false} render={<Link href="/app/learn" />}>
+                      <ArrowUpRight />
+                    </Button>
                   </div>
                 </div>
               </CardContent>

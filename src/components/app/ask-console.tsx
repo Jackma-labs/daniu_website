@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import {
   RotateCcw,
   ShieldCheck,
   Sparkles,
+  Trash2,
   Wrench,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -252,16 +253,38 @@ export function AskConsole() {
     setInput("");
   }
 
+  function selectSession(sessionId: string) {
+    setActiveSessionId(sessionId);
+    setInput("");
+  }
+
+  function clearSessions() {
+    if (isLoading) {
+      return;
+    }
+
+    setSessions([]);
+    setActiveSessionId(null);
+    setInput("");
+  }
+
   return (
     <section className="w-full max-w-6xl flex-1">
       <div className="grid w-full gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
         <aside className="hidden lg:flex">
           <Card className="sticky top-20 h-[calc(100dvh-6rem)] w-full rounded-2xl shadow-none">
             <CardContent className="flex h-full flex-col gap-3 p-3">
-              <Button className="w-full justify-start" onClick={resetConversation}>
-                <Plus data-icon="inline-start" />
-                新对话
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button className="flex-1 justify-start" onClick={resetConversation}>
+                  <Plus data-icon="inline-start" />
+                  新对话
+                </Button>
+                {sessions.length ? (
+                  <Button variant="outline" size="icon" aria-label="清空对话记录" onClick={clearSessions} disabled={isLoading}>
+                    <Trash2 />
+                  </Button>
+                ) : null}
+              </div>
               <div className="px-1 text-xs font-medium text-muted-foreground">最近对话</div>
               <ScrollArea className="min-h-0 flex-1">
                 <div className="flex flex-col gap-1 pr-2">
@@ -271,10 +294,7 @@ export function AskConsole() {
                         key={session.id}
                         variant={session.id === activeSessionId ? "secondary" : "ghost"}
                         className="h-auto justify-start rounded-xl px-3 py-2 text-left"
-                        onClick={() => {
-                          setActiveSessionId(session.id);
-                          setInput("");
-                        }}
+                        onClick={() => selectSession(session.id)}
                         disabled={isLoading && session.id !== activeSessionId}
                       >
                         <MessageSquareText data-icon="inline-start" />
@@ -301,6 +321,34 @@ export function AskConsole() {
             hasConversation ? "justify-start text-left" : "justify-center text-center"
           )}
         >
+          {sessions.length ? (
+            <div className="mb-5 flex w-full flex-col gap-2 lg:hidden">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-medium text-muted-foreground">最近对话</span>
+                <Button variant="ghost" size="xs" onClick={clearSessions} disabled={isLoading}>
+                  <Trash2 data-icon="inline-start" />
+                  清空
+                </Button>
+              </div>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+                {sessions.slice(0, 8).map((session) => (
+                  <Button
+                    key={session.id}
+                    variant={session.id === activeSessionId ? "secondary" : "outline"}
+                    className="h-auto max-w-56 shrink-0 justify-start rounded-xl px-3 py-2 text-left"
+                    onClick={() => selectSession(session.id)}
+                    disabled={isLoading && session.id !== activeSessionId}
+                  >
+                    <MessageSquareText data-icon="inline-start" />
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs">{session.title}</span>
+                      <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{formatSessionTime(session.updatedAt)}</span>
+                    </span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+          ) : null}
       <div className={cn("flex flex-col items-center", hasConversation && "w-full items-start")}>
         <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1">
           <Sparkles className="size-3" strokeWidth={1.8} />

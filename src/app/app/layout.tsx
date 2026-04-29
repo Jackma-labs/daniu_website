@@ -1,6 +1,7 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, Brain, ClipboardList, Database, MessageCircle, Settings2, Sparkles } from "lucide-react";
+import { Database, Settings2, Sparkles } from "lucide-react";
+import { AppNav } from "@/components/app/app-nav";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,20 +12,13 @@ export const metadata: Metadata = {
   description: "企业自己的本地 AI 专家。",
 };
 
-const navItems = [
-  { label: "问大牛", href: "/app", icon: MessageCircle },
-  { label: "喂资料", href: "/app/learn", icon: BookOpen },
-  { label: "牛大脑", href: "/app/memory", icon: Brain },
-  { label: "待学习", href: "/app/gaps", icon: ClipboardList },
-];
-
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
 
   return (
-    <main className="min-h-dvh bg-background text-foreground">
-      <header className="flex h-16 items-center justify-between px-4 md:px-6">
-        <Link href="/app" className="flex items-center gap-3">
+    <main className="min-h-dvh bg-background pb-20 text-foreground md:pb-0">
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur md:px-6">
+        <Link href="/app" className="flex items-center gap-3" aria-label="回到问大牛">
           <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm">
             <Sparkles className="size-4" strokeWidth={1.8} />
           </span>
@@ -34,14 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {navItems.map((item) => (
-            <Button key={item.href} variant="ghost" size="sm" className="text-muted-foreground" nativeButton={false} render={<Link href={item.href} />}>
-              <item.icon data-icon="inline-start" />
-              {item.label}
-            </Button>
-          ))}
-        </nav>
+        <AppNav />
 
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="hidden gap-1.5 sm:inline-flex">
