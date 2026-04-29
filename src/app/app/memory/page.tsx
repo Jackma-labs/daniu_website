@@ -75,9 +75,9 @@ export default function MemoryPage() {
         <div className="text-center">
           <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1">
             <GraduationCap className="size-3" strokeWidth={1.8} />
-            大牛记忆
+            牛大脑
           </Badge>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">大牛已经学会了什么</h1>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">看看牛大脑里已经装了什么</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-7 text-muted-foreground">
             这里不是文件夹，而是大牛对企业能力的掌握情况。每一张卡，都是一个可以继续追问、补充和训练的能力模块。
           </p>

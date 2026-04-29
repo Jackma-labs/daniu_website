@@ -1,6 +1,6 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
-import { BookOpen, Brain, ClipboardList, Database, Settings2, Sparkles } from "lucide-react";
+import { BookOpen, Brain, ClipboardList, Database, MessageCircle, Settings2, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,8 +12,9 @@ export const metadata: Metadata = {
 };
 
 const navItems = [
-  { label: "学习资料", href: "/app/learn", icon: BookOpen },
-  { label: "大牛记忆", href: "/app/memory", icon: Brain },
+  { label: "问大牛", href: "/app", icon: MessageCircle },
+  { label: "喂资料", href: "/app/learn", icon: BookOpen },
+  { label: "牛大脑", href: "/app/memory", icon: Brain },
   { label: "待学习", href: "/app/gaps", icon: ClipboardList },
 ];
 

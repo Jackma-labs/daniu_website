@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -13,6 +13,8 @@ import {
   FileUp,
   GraduationCap,
   MessageCircleQuestion,
+  MessageSquareText,
+  Plus,
   Quote,
   RotateCcw,
   ShieldCheck,
@@ -44,6 +46,13 @@ type UiMessage = ChatMessage & {
   model?: string;
   sources?: KnowledgeSource[];
   error?: boolean;
+};
+
+type ChatSession = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  messages: UiMessage[];
 };
 
 type KnowledgeSource = {
@@ -90,14 +99,87 @@ const answerRules = [
   "关键结论给出处",
 ];
 
+const sessionStorageKey = "daniu.chat.sessions.v1";
+const maxSessions = 24;
+
+function createSessionTitle(content: string) {
+  const compact = content.replace(/\s+/g, " ").trim();
+  return compact.length > 24 ? `${compact.slice(0, 24)}...` : compact || "新的对话";
+}
+
+function updateSessionMessages(sessions: ChatSession[], sessionId: string, message: UiMessage) {
+  const now = new Date().toISOString();
+
+  return sessions.map((session) =>
+    session.id === sessionId
+      ? {
+          ...session,
+          updatedAt: now,
+          messages: [...session.messages, message],
+        }
+      : session
+  );
+}
+
+function formatSessionTime(value: string) {
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(timestamp));
+}
+
 export function AskConsole() {
   const [provider, setProvider] = useState<Provider>("auto");
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<UiMessage[]>([]);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [hasHydratedSessions, setHasHydratedSessions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const activeSession = useMemo(() => sessions.find((session) => session.id === activeSessionId), [activeSessionId, sessions]);
+  const messages = activeSession?.messages ?? [];
   const canSubmit = useMemo(() => input.trim().length > 0 && !isLoading, [input, isLoading]);
   const hasConversation = messages.length > 0;
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(sessionStorageKey);
+        const parsed = stored ? (JSON.parse(stored) as ChatSession[]) : [];
+        const validSessions = Array.isArray(parsed)
+          ? parsed
+              .filter((session) => session.id && session.title && Array.isArray(session.messages))
+              .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
+              .slice(0, maxSessions)
+          : [];
+
+        setSessions(validSessions);
+        setActiveSessionId(validSessions[0]?.id ?? null);
+      } catch {
+        setSessions([]);
+        setActiveSessionId(null);
+      } finally {
+        setHasHydratedSessions(true);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (!hasHydratedSessions) {
+      return;
+    }
+
+    window.localStorage.setItem(sessionStorageKey, JSON.stringify(sessions.slice(0, maxSessions)));
+  }, [hasHydratedSessions, sessions]);
 
   async function askDaniu(question = input) {
     const content = question.trim();
@@ -106,9 +188,22 @@ export function AskConsole() {
     }
 
     const userMessage: UiMessage = { id: crypto.randomUUID(), role: "user", content };
+    const sessionId = activeSession?.id ?? crypto.randomUUID();
+    const now = new Date().toISOString();
     const nextMessages = [...messages, userMessage];
 
-    setMessages(nextMessages);
+    setActiveSessionId(sessionId);
+    setSessions((current) => {
+      const existing = current.find((session) => session.id === sessionId);
+      const nextSession: ChatSession = {
+        id: sessionId,
+        title: existing?.title ?? createSessionTitle(content),
+        updatedAt: now,
+        messages: nextMessages,
+      };
+
+      return [nextSession, ...current.filter((session) => session.id !== sessionId)].slice(0, maxSessions);
+    });
     setInput("");
     setIsLoading(true);
 
@@ -128,44 +223,84 @@ export function AskConsole() {
       }
 
       const result = data as ChatResult;
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: result.content,
-          provider: result.provider,
-          model: result.model,
-          sources: result.sources,
-        },
-      ]);
+      const assistantMessage: UiMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: result.content,
+        provider: result.provider,
+        model: result.model,
+        sources: result.sources,
+      };
+
+      setSessions((current) => updateSessionMessages(current, sessionId, assistantMessage));
     } catch (requestError) {
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content: requestError instanceof Error ? requestError.message : "模型服务暂时不可用",
-          error: true,
-        },
-      ]);
+      const assistantMessage: UiMessage = {
+        id: crypto.randomUUID(),
+        role: "assistant",
+        content: requestError instanceof Error ? requestError.message : "模型服务暂时不可用",
+        error: true,
+      };
+
+      setSessions((current) => updateSessionMessages(current, sessionId, assistantMessage));
     } finally {
       setIsLoading(false);
     }
   }
 
   function resetConversation() {
-    setMessages([]);
+    setActiveSessionId(null);
     setInput("");
   }
 
   return (
-    <section
-      className={cn(
-        "flex w-full max-w-4xl flex-1 flex-col items-center",
-        hasConversation ? "justify-start text-left" : "justify-center text-center"
-      )}
-    >
+    <section className="w-full max-w-6xl flex-1">
+      <div className="grid w-full gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
+        <aside className="hidden lg:flex">
+          <Card className="sticky top-20 h-[calc(100dvh-6rem)] w-full rounded-2xl shadow-none">
+            <CardContent className="flex h-full flex-col gap-3 p-3">
+              <Button className="w-full justify-start" onClick={resetConversation}>
+                <Plus data-icon="inline-start" />
+                新对话
+              </Button>
+              <div className="px-1 text-xs font-medium text-muted-foreground">最近对话</div>
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="flex flex-col gap-1 pr-2">
+                  {sessions.length ? (
+                    sessions.map((session) => (
+                      <Button
+                        key={session.id}
+                        variant={session.id === activeSessionId ? "secondary" : "ghost"}
+                        className="h-auto justify-start rounded-xl px-3 py-2 text-left"
+                        onClick={() => {
+                          setActiveSessionId(session.id);
+                          setInput("");
+                        }}
+                        disabled={isLoading && session.id !== activeSessionId}
+                      >
+                        <MessageSquareText data-icon="inline-start" />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate text-sm">{session.title}</span>
+                          <span className="mt-0.5 block truncate text-xs text-muted-foreground">{formatSessionTime(session.updatedAt)}</span>
+                        </span>
+                      </Button>
+                    ))
+                  ) : (
+                    <div className="rounded-xl border border-dashed p-3 text-xs leading-6 text-muted-foreground">
+                      问一次大牛，这里就会留下对话记录。切到喂资料或牛大脑，再回来也不会丢。
+                    </div>
+                  )}
+                </div>
+              </ScrollArea>
+            </CardContent>
+          </Card>
+        </aside>
+
+        <div
+          className={cn(
+            "flex min-w-0 flex-col items-center",
+            hasConversation ? "justify-start text-left" : "justify-center text-center"
+          )}
+        >
       <div className={cn("flex flex-col items-center", hasConversation && "w-full items-start")}>
         <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1">
           <Sparkles className="size-3" strokeWidth={1.8} />
@@ -282,9 +417,11 @@ export function AskConsole() {
                 rows={hasConversation ? 3 : 4}
                 value={input}
                 onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+                onKeyDownCapture={(event) => {
+                  const isEnter = event.key === "Enter" || event.code === "Enter";
+                  if (isEnter && !event.shiftKey && !event.nativeEvent.isComposing) {
                     event.preventDefault();
+                    event.stopPropagation();
                     void askDaniu();
                   }
                 }}
@@ -346,7 +483,7 @@ export function AskConsole() {
                 key={item.text}
                 variant="outline"
                 className="h-auto justify-start rounded-xl px-4 py-3 text-left text-sm font-normal text-muted-foreground"
-                onClick={() => askDaniu(item.text)}
+                onClick={() => void askDaniu(item.text)}
                 disabled={isLoading}
               >
                 <item.icon data-icon="inline-start" />
@@ -365,6 +502,8 @@ export function AskConsole() {
           </div>
         </>
       )}
+        </div>
+      </div>
     </section>
   );
 }

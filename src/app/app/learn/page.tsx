@@ -14,9 +14,9 @@ export default async function LearnPage() {
         <div className="text-center">
           <Badge variant="secondary" className="gap-1.5 rounded-full px-3 py-1">
             <Sparkles className="size-3" strokeWidth={1.8} />
-            让大牛学习资料
+            给大牛喂资料
           </Badge>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">把资料拖进来，大牛会自己学习</h1>
+          <h1 className="mt-5 text-4xl font-semibold tracking-tight md:text-5xl">把资料喂进去，大牛会自己学习</h1>
           <p className="mx-auto mt-4 max-w-2xl text-balance text-base leading-7 text-muted-foreground">
             产品手册、报价规则、故障案例、项目方案、图片、音频、视频，都可以成为大牛的学习材料。
           </p>

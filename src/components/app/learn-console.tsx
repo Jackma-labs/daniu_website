@@ -96,7 +96,7 @@ export function LearnConsole({ initialItems, initialStats }: { initialItems: Pub
               {isUploading ? <Spinner className="size-6" /> : <UploadCloud className="size-6 text-foreground/70" strokeWidth={1.7} />}
             </span>
             <div>
-              <h2 className="text-xl font-medium tracking-tight">{isUploading ? "大牛正在学习资料" : "拖拽文件到这里"}</h2>
+              <h2 className="text-xl font-medium tracking-tight">{isUploading ? "大牛正在吃资料" : "拖拽文件到这里"}</h2>
               <p className="mt-2 text-sm text-muted-foreground">支持 PDF / Word / PPT / Excel / 图片 / 音频 / 视频</p>
             </div>
             <input ref={inputRef} type="file" multiple className="hidden" onChange={(event) => event.target.files && uploadFiles(event.target.files)} />
@@ -114,7 +114,7 @@ export function LearnConsole({ initialItems, initialStats }: { initialItems: Pub
               <FileText className="size-4 text-foreground/80" strokeWidth={1.7} />
             </div>
             <div className="absolute bottom-5 left-5 right-5">
-              <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Learning Queue</div>
+              <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Feeding Queue</div>
               <div className="mt-2 text-3xl font-semibold tracking-tight">{stats.total} 份</div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {stats.learned} 份已学会，{stats.pending} 份待确认
@@ -132,7 +132,7 @@ export function LearnConsole({ initialItems, initialStats }: { initialItems: Pub
 
       <Card className="mt-5 rounded-2xl shadow-none">
         <CardHeader>
-          <CardTitle className="text-base">最近学习</CardTitle>
+          <CardTitle className="text-base">最近喂过的资料</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-1">
           {items.slice(0, 8).map((item) => {
