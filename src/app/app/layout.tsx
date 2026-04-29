@@ -1,6 +1,7 @@
 ﻿import type { Metadata } from "next";
 import Link from "next/link";
 import { BookOpen, Brain, ClipboardList, Database, Settings2, Sparkles } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -46,6 +47,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Button variant="ghost" size="icon-sm" aria-label="设置" render={<Link href="/app/settings" />}>
             <Settings2 className="size-4" strokeWidth={1.8} />
           </Button>
+          <Link href="/app/profile" aria-label="个人中心">
+            <Avatar size="sm">
+              <AvatarFallback>牛</AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </header>
       {children}
