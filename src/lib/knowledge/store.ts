@@ -2,6 +2,7 @@
 
 import { mkdir, readFile, writeFile } from "fs/promises";
 import path from "path";
+import { normalizeText, parseKnowledgeFile } from "@/lib/knowledge/parsers";
 
 export type KnowledgeStatus = "learned" | "processing" | "needs_review";
 
@@ -192,7 +193,8 @@ export async function saveKnowledgeFile(file: File) {
   const storageName = `${id}-${safeName}`;
   const storagePath = path.join(uploadsDir, storageName);
   const buffer = Buffer.from(await file.arrayBuffer());
-  const extractedText = extractText(buffer, safeName, file.type);
+  const parsed = parseKnowledgeFile(buffer, safeName, file.type);
+  const extractedText = parsed.text;
   const chunks = chunkText(extractedText).map((text, index) => ({
     id: `${id}-${index + 1}`,
     itemId: id,
@@ -211,9 +213,9 @@ export async function saveKnowledgeFile(file: File) {
     type: file.type || inferMimeType(safeName),
     domain: inferDomain(safeName),
     status: chunks.length ? "learned" : "needs_review",
-    chunks: chunks.length || estimateChunks(file.size),
+    chunks: chunks.length,
     uploadedAt: new Date().toISOString(),
-    summary: chunks.length ? summarizeText(extractedText, safeName) : buildSummary(safeName),
+    summary: chunks.length ? summarizeText(extractedText, safeName, parsed.parser) : buildSummary(safeName, parsed.parser),
     storagePath,
   };
 
@@ -343,40 +345,18 @@ function inferDomain(name: string) {
   return "产品资料";
 }
 
-function estimateChunks(size: number) {
-  return Math.max(1, Math.ceil(size / 18000));
-}
+function buildSummary(name: string, parser: string) {
+  if (parser === "pdf-best-effort") {
+    return `${inferDomain(name)}相关资料已保存；PDF 未提取到可用文本，可能是扫描件或字体编码特殊。`;
+  }
 
-function buildSummary(name: string) {
   return `${inferDomain(name)}相关资料已保存；当前格式暂未解析正文，需要后续接入专用解析器。`;
 }
 
-function summarizeText(text: string, name: string) {
+function summarizeText(text: string, name: string, parser: string) {
   const compact = normalizeText(text);
   const summary = compact.slice(0, 90);
-  return summary ? `${inferDomain(name)}：${summary}` : buildSummary(name);
-}
-
-function extractText(buffer: Buffer, name: string, mimeType: string) {
-  const ext = path.extname(name).toLowerCase();
-  const isTextLike =
-    mimeType.startsWith("text/") ||
-    [".txt", ".md", ".csv", ".json", ".html", ".xml", ".log"].includes(ext);
-
-  if (!isTextLike) {
-    return "";
-  }
-
-  return normalizeText(buffer.toString("utf8"));
-}
-
-function normalizeText(text: string) {
-  return text
-    .replace(/\u0000/g, "")
-    .replace(/\r\n/g, "\n")
-    .replace(/[\t ]+/g, " ")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  return summary ? `${inferDomain(name)}：${summary}` : buildSummary(name, parser);
 }
 
 function chunkText(text: string) {
