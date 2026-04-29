@@ -1,4 +1,6 @@
-﻿export type ChatProvider = "auto" | "local" | "minimax";
+﻿import "server-only";
+
+export type ChatProvider = "auto" | "local" | "minimax";
 export type ChatRole = "system" | "user" | "assistant";
 
 export type ChatMessage = {
@@ -20,6 +22,16 @@ type ProviderConfig = {
   endpoint: string;
 };
 
+export type ProviderStatus = {
+  provider: Exclude<ChatProvider, "auto">;
+  label: string;
+  configured: boolean;
+  model: string;
+  baseUrl: string;
+  endpoint: string;
+  priority: number;
+};
+
 const providerLabels: Record<Exclude<ChatProvider, "auto">, string> = {
   local: "本地大模型",
   minimax: "MiniMax",
@@ -30,6 +42,34 @@ export function getConfiguredProviders() {
     local: getLocalConfig(),
     minimax: getMiniMaxConfig(),
   };
+}
+
+export function getProviderStatuses(): ProviderStatus[] {
+  const localBaseUrl = process.env.DANIU_LOCAL_LLM_BASE_URL ?? "";
+  const localModel = process.env.DANIU_LOCAL_LLM_MODEL ?? "";
+  const minimaxBaseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimaxi.com/v1";
+  const minimaxModel = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
+
+  return [
+    {
+      provider: "local",
+      label: providerLabels.local,
+      configured: Boolean(localBaseUrl && process.env.DANIU_LOCAL_LLM_API_KEY && localModel),
+      model: localModel || "未设置",
+      baseUrl: localBaseUrl || "未设置",
+      endpoint: "/chat/completions",
+      priority: 1,
+    },
+    {
+      provider: "minimax",
+      label: providerLabels.minimax,
+      configured: Boolean(process.env.MINIMAX_API_KEY),
+      model: minimaxModel,
+      baseUrl: minimaxBaseUrl,
+      endpoint: "/text/chatcompletion_v2",
+      priority: 2,
+    },
+  ];
 }
 
 export async function completeChat(provider: ChatProvider, messages: ChatMessage[]) {
@@ -119,7 +159,7 @@ function getLocalConfig(): ProviderConfig | null {
 }
 
 function getMiniMaxConfig(): ProviderConfig | null {
-  const baseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimax.io/v1";
+  const baseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimaxi.com/v1";
   const apiKey = process.env.MINIMAX_API_KEY;
   const model = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
 
@@ -164,3 +204,4 @@ function getProviderError(data: unknown) {
 function joinUrl(baseUrl: string, endpoint: string) {
   return `${baseUrl.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
 }
+

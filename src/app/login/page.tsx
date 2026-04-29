@@ -1,9 +1,8 @@
 ﻿import Link from "next/link";
-import { ArrowRight, LockKeyhole, Server, Sparkles } from "lucide-react";
+import { LockKeyhole, Server, Sparkles } from "lucide-react";
+import { LoginForm } from "@/components/app/login-form";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 
 export default function LoginPage() {
   return (
@@ -43,22 +42,9 @@ export default function LoginPage() {
             <CardTitle className="mt-4 text-2xl">进入大牛</CardTitle>
           </CardHeader>
           <CardContent>
-            <form className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="account">账号</label>
-                <Input id="account" placeholder="name@company.com" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium" htmlFor="password">密码</label>
-                <Input id="password" type="password" placeholder="请输入密码" />
-              </div>
-              <Button className="w-full" render={<Link href="/app" />}>
-                登录
-                <ArrowRight className="size-4" strokeWidth={1.8} />
-              </Button>
-            </form>
+            <LoginForm />
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              当前为原型登录页，后续接入企业账号和设备授权。
+              当前使用本地设备账号，后续接入企业统一身份和设备授权。
             </p>
           </CardContent>
         </Card>

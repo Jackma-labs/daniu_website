@@ -1,16 +1,26 @@
 ﻿import { BadgeCheck, Brain, Database, KeyRound, Server, ShieldCheck, UserRound } from "lucide-react";
+import { LogoutButton } from "@/components/app/logout-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getCurrentUser } from "@/lib/auth";
 
-const stats = [
-  ["角色", "企业管理员", ShieldCheck],
-  ["设备", "大牛盒 · 在线", Server],
-  ["知识库", "1,248 份资料", Database],
-  ["模型", "本地 + MiniMax", Brain],
-];
+export const dynamic = "force-dynamic";
 
-export default function ProfilePage() {
+function getStats(role: string) {
+  return [
+    ["角色", role, ShieldCheck],
+    ["设备", "大牛盒 · 在线", Server],
+    ["知识库", "1,248 份资料", Database],
+    ["模型", "本地 + MiniMax", Brain],
+  ];
+}
+
+export default async function ProfilePage() {
+  const user = await getCurrentUser();
+  const displayUser = user ?? { name: "未登录", account: "请从登录页进入", role: "访客" };
+  const stats = getStats(displayUser.role);
+
   return (
     <section className="flex min-h-[calc(100dvh-4rem)] flex-col items-center px-4 pb-12 pt-12 md:px-6 md:pt-16">
       <div className="w-full max-w-4xl">
@@ -20,12 +30,12 @@ export default function ProfilePage() {
               <div className="absolute inset-x-6 top-24 h-px bg-foreground/10" />
               <div className="absolute inset-y-6 right-20 w-px bg-foreground/10" />
               <Avatar size="lg" className="size-14">
-                <AvatarFallback>牛</AvatarFallback>
+                <AvatarFallback>{displayUser.name.slice(0, 1)}</AvatarFallback>
               </Avatar>
               <div className="mt-28">
                 <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Account</div>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight">管理员</h1>
-                <p className="mt-2 text-sm text-muted-foreground">大牛企业控制台</p>
+                <h1 className="mt-3 text-3xl font-semibold tracking-tight">{displayUser.name}</h1>
+                <p className="mt-2 text-sm text-muted-foreground">{displayUser.account}</p>
               </div>
             </div>
 
@@ -41,7 +51,7 @@ export default function ProfilePage() {
                 </div>
                 <Badge variant="outline" className="gap-1.5 rounded-full">
                   <BadgeCheck className="size-3" strokeWidth={1.8} />
-                  已授权
+                  {user ? "已授权" : "未登录"}
                 </Badge>
               </div>
 
@@ -73,6 +83,10 @@ export default function ProfilePage() {
                   <Badge variant="outline">规划中</Badge>
                 </CardContent>
               </Card>
+
+              <div className="mt-4 flex justify-end">
+                <LogoutButton />
+              </div>
             </div>
           </CardContent>
         </Card>

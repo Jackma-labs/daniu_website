@@ -4,6 +4,7 @@ import { BookOpen, Brain, ClipboardList, Database, Settings2, Sparkles } from "l
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { getCurrentUser } from "@/lib/auth";
 
 export const metadata: Metadata = {
   title: "问大牛 | 大牛控制台",
@@ -16,7 +17,9 @@ const navItems = [
   { label: "待学习", href: "/app/gaps", icon: ClipboardList },
 ];
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+export default async function AppLayout({ children }: { children: React.ReactNode }) {
+  const user = await getCurrentUser();
+
   return (
     <main className="min-h-dvh bg-background text-foreground">
       <header className="flex h-16 items-center justify-between px-4 md:px-6">
@@ -32,8 +35,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         <nav className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => (
-            <Button key={item.href} variant="ghost" size="sm" className="gap-1.5 text-muted-foreground" render={<Link href={item.href} />}>
-              <item.icon className="size-4" strokeWidth={1.8} />
+            <Button key={item.href} variant="ghost" size="sm" className="text-muted-foreground" nativeButton={false} render={<Link href={item.href} />}>
+              <item.icon data-icon="inline-start" />
               {item.label}
             </Button>
           ))}
@@ -44,14 +47,20 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Database className="size-3" strokeWidth={1.8} />
             本地知识库已连接
           </Badge>
-          <Button variant="ghost" size="icon-sm" aria-label="设置" render={<Link href="/app/settings" />}>
-            <Settings2 className="size-4" strokeWidth={1.8} />
+          <Button variant="ghost" size="icon-sm" aria-label="设置" nativeButton={false} render={<Link href="/app/settings" />}>
+            <Settings2 />
           </Button>
-          <Link href="/app/profile" aria-label="个人中心">
-            <Avatar size="sm">
-              <AvatarFallback>牛</AvatarFallback>
-            </Avatar>
-          </Link>
+          {user ? (
+            <Link href="/app/profile" aria-label="个人中心">
+              <Avatar size="sm">
+                <AvatarFallback>{user.name.slice(0, 1)}</AvatarFallback>
+              </Avatar>
+            </Link>
+          ) : (
+            <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/login" />}>
+              登录
+            </Button>
+          )}
         </div>
       </header>
       {children}
