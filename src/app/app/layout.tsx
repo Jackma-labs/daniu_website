@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Database, Settings2, Sparkles } from "lucide-react";
 import { AppNav } from "@/components/app/app-nav";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -14,6 +15,9 @@ export const metadata: Metadata = {
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser();
+  if (!user) {
+    redirect("/login");
+  }
 
   return (
     <main className="min-h-dvh bg-background pb-20 text-foreground md:pb-0">
@@ -38,17 +42,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Button variant="ghost" size="icon-sm" aria-label="设置" nativeButton={false} render={<Link href="/app/settings" />}>
             <Settings2 />
           </Button>
-          {user ? (
-            <Link href="/app/profile" aria-label="个人中心">
-              <Avatar size="sm">
-                <AvatarFallback>{user.name.slice(0, 1)}</AvatarFallback>
-              </Avatar>
-            </Link>
-          ) : (
-            <Button variant="outline" size="sm" nativeButton={false} render={<Link href="/login" />}>
-              登录
-            </Button>
-          )}
+          <Link href="/app/profile" aria-label="个人中心">
+            <Avatar size="sm">
+              <AvatarFallback>{user.name.slice(0, 1)}</AvatarFallback>
+            </Avatar>
+          </Link>
         </div>
       </header>
       {children}

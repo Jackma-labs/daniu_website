@@ -1,4 +1,6 @@
-﻿import "server-only";
+import "server-only";
+
+import { getRuntimeConfig } from "@/lib/server/config";
 
 export type ChatProvider = "auto" | "local" | "minimax";
 export type ChatRole = "system" | "user" | "assistant";
@@ -106,20 +108,36 @@ async function completeWithFallback(configs: ProviderConfig[], messages: ChatMes
 }
 
 async function callChatProvider(config: ProviderConfig, messages: ChatMessage[]): Promise<ChatCompletion> {
-  const response = await fetch(joinUrl(config.baseUrl, config.endpoint), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${config.apiKey}`,
-    },
-    body: JSON.stringify({
-      model: config.model,
-      messages,
-      stream: false,
-      temperature: 0.3,
-      max_tokens: 2048,
-    }),
-  });
+  const runtimeConfig = getRuntimeConfig();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), runtimeConfig.modelTimeoutMs);
+
+  let response: Response;
+  try {
+    response = await fetch(joinUrl(config.baseUrl, config.endpoint), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: config.model,
+        messages,
+        stream: false,
+        temperature: 0.3,
+        max_tokens: runtimeConfig.modelMaxTokens,
+      }),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`${providerLabels[config.provider]} 响应超时`);
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
 
   const data = await response.json().catch(() => null);
 

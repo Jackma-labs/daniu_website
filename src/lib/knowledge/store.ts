@@ -1,8 +1,9 @@
-﻿import "server-only";
+import "server-only";
 
-import { mkdir, readFile, writeFile } from "fs/promises";
+import { mkdir, readFile, rename, writeFile } from "fs/promises";
 import path from "path";
 import { normalizeText, parseKnowledgeFile } from "@/lib/knowledge/parsers";
+import { getRuntimeConfig } from "@/lib/server/config";
 
 export type KnowledgeStatus = "learned" | "processing" | "needs_review";
 
@@ -38,10 +39,7 @@ export type KnowledgeSource = Pick<KnowledgeItem, "name" | "domain" | "summary">
   chunkIndex: number;
 };
 
-const storageRoot = process.env.DANIU_STORAGE_DIR || path.join(process.cwd(), ".daniu");
-const uploadsDir = path.join(storageRoot, "uploads");
-const manifestPath = path.join(storageRoot, "knowledge.json");
-const chunksPath = path.join(storageRoot, "chunks.json");
+let knowledgeWriteQueue = Promise.resolve();
 
 const seedItems: KnowledgeItem[] = [
   {
@@ -186,12 +184,13 @@ export async function getKnowledgeStats() {
 }
 
 export async function saveKnowledgeFile(file: File) {
+  const paths = getStoragePaths();
   await ensureStorage();
 
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const safeName = sanitizeFileName(file.name || "untitled");
   const storageName = `${id}-${safeName}`;
-  const storagePath = path.join(uploadsDir, storageName);
+  const storagePath = path.join(/*turbopackIgnore: true*/ paths.uploadsDir, storageName);
   const buffer = Buffer.from(await file.arrayBuffer());
   const parsed = parseKnowledgeFile(buffer, safeName, file.type);
   const extractedText = parsed.text;
@@ -204,7 +203,7 @@ export async function saveKnowledgeFile(file: File) {
     text,
   }));
 
-  await writeFile(storagePath, buffer);
+  await writeFile(/* turbopackIgnore: true */ storagePath, buffer);
 
   const item: KnowledgeItem = {
     id,
@@ -219,10 +218,12 @@ export async function saveKnowledgeFile(file: File) {
     storagePath,
   };
 
-  const [currentItems, currentChunks] = await Promise.all([readManifest(), readChunks()]);
-  await Promise.all([writeManifest([item, ...currentItems]), writeChunks([...chunks, ...currentChunks])]);
+  return enqueueKnowledgeWrite(async () => {
+    const [currentItems, currentChunks] = await Promise.all([readManifest(), readChunks()]);
+    await Promise.all([writeManifest([item, ...currentItems]), writeChunks([...chunks, ...currentChunks])]);
 
-  return toPublicKnowledgeItem(item);
+    return toPublicKnowledgeItem(item);
+  });
 }
 
 export async function findKnowledgeSources(query: string, limit = 3): Promise<KnowledgeSource[]> {
@@ -272,7 +273,7 @@ export async function findKnowledgeSources(query: string, limit = 3): Promise<Kn
 
 async function readManifest(): Promise<KnowledgeItem[]> {
   try {
-    const content = await readFile(manifestPath, "utf8");
+    const content = await readFile(/* turbopackIgnore: true */ getStoragePaths().manifestPath, "utf8");
     const parsed = JSON.parse(content) as KnowledgeItem[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -282,7 +283,7 @@ async function readManifest(): Promise<KnowledgeItem[]> {
 
 async function readChunks(): Promise<KnowledgeChunk[]> {
   try {
-    const content = await readFile(chunksPath, "utf8");
+    const content = await readFile(/* turbopackIgnore: true */ getStoragePaths().chunksPath, "utf8");
     const parsed = JSON.parse(content) as KnowledgeChunk[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
@@ -292,16 +293,41 @@ async function readChunks(): Promise<KnowledgeChunk[]> {
 
 async function writeManifest(items: KnowledgeItem[]) {
   await ensureStorage();
-  await writeFile(manifestPath, JSON.stringify(items, null, 2), "utf8");
+  await writeJsonAtomic(getStoragePaths().manifestPath, items);
 }
 
 async function writeChunks(chunks: KnowledgeChunk[]) {
   await ensureStorage();
-  await writeFile(chunksPath, JSON.stringify(chunks, null, 2), "utf8");
+  await writeJsonAtomic(getStoragePaths().chunksPath, chunks);
 }
 
 async function ensureStorage() {
-  await mkdir(uploadsDir, { recursive: true });
+  await mkdir(/* turbopackIgnore: true */ getStoragePaths().uploadsDir, { recursive: true });
+}
+
+function getStoragePaths() {
+  const storageRoot = getRuntimeConfig().storageDir;
+  return {
+    storageRoot,
+    uploadsDir: path.join(/*turbopackIgnore: true*/ storageRoot, "uploads"),
+    manifestPath: path.join(/*turbopackIgnore: true*/ storageRoot, "knowledge.json"),
+    chunksPath: path.join(/*turbopackIgnore: true*/ storageRoot, "chunks.json"),
+  };
+}
+
+function enqueueKnowledgeWrite<T>(operation: () => Promise<T>) {
+  const next = knowledgeWriteQueue.then(operation, operation);
+  knowledgeWriteQueue = next.then(
+    () => undefined,
+    () => undefined
+  );
+  return next;
+}
+
+async function writeJsonAtomic(filePath: string, value: unknown) {
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
+  await writeFile(/* turbopackIgnore: true */ tempPath, JSON.stringify(value, null, 2), "utf8");
+  await rename(/* turbopackIgnore: true */ tempPath, filePath);
 }
 
 function toPublicKnowledgeItem(item: KnowledgeItem): PublicKnowledgeItem {
