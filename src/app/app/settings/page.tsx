@@ -51,7 +51,7 @@ export default function SettingsPage() {
               <div className="mt-28">
                 <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Model Router</div>
                 <h2 className="mt-3 text-2xl font-semibold tracking-tight">模型服务</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">自动模式优先调用本地大模型，失败后回退到 MiniMax。</p>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">自动模式优先调用云端 API，失败后再回退到本地大模型。</p>
               </div>
             </div>
 

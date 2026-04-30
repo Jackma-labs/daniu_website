@@ -19,7 +19,7 @@ const systemPrompt: ChatMessage = {
     "你是大牛，企业自己的本地 AI 专家。回答要直接、克制、可执行。优先基于企业知识来源回答；遇到不确定内容，要说明需要补充哪些资料。",
 };
 
-const allowedProviders: ChatProvider[] = ["auto", "local", "minimax"];
+const allowedProviders: ChatProvider[] = ["auto", "deepseek", "minimax", "local"];
 
 export async function POST(request: Request) {
   let user: Awaited<ReturnType<typeof requireUser>> | null = null;

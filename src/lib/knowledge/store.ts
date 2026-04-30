@@ -154,7 +154,8 @@ const seedChunks: KnowledgeChunk[] = [
 
 export async function getKnowledgeItems(): Promise<KnowledgeItem[]> {
   const stored = await readManifest();
-  return [...stored, ...seedItems].sort((a, b) => Date.parse(b.uploadedAt) - Date.parse(a.uploadedAt));
+  const demoItems = getRuntimeConfig().enableDemoData ? seedItems : [];
+  return [...stored, ...demoItems].sort((a, b) => Date.parse(b.uploadedAt) - Date.parse(a.uploadedAt));
 }
 
 export async function getPublicKnowledgeItems(): Promise<PublicKnowledgeItem[]> {
@@ -164,7 +165,8 @@ export async function getPublicKnowledgeItems(): Promise<PublicKnowledgeItem[]> 
 
 export async function getKnowledgeChunks(): Promise<KnowledgeChunk[]> {
   const stored = await readChunks();
-  return [...stored, ...seedChunks];
+  const demoChunks = getRuntimeConfig().enableDemoData ? seedChunks : [];
+  return [...stored, ...demoChunks];
 }
 
 export async function getKnowledgeStats() {
@@ -192,7 +194,8 @@ export async function saveKnowledgeFile(file: File) {
   const storageName = `${id}-${safeName}`;
   const storagePath = path.join(/*turbopackIgnore: true*/ paths.uploadsDir, storageName);
   const buffer = Buffer.from(await file.arrayBuffer());
-  const parsed = parseKnowledgeFile(buffer, safeName, file.type);
+  const config = getRuntimeConfig();
+  const parsed = parseKnowledgeFileSafely(buffer, safeName, file.type, config);
   const extractedText = parsed.text;
   const chunks = chunkText(extractedText).map((text, index) => ({
     id: `${id}-${index + 1}`,
@@ -372,11 +375,26 @@ function inferDomain(name: string) {
 }
 
 function buildSummary(name: string, parser: string) {
+  if (parser === "parse-error") {
+    return `${inferDomain(name)}相关资料已保存；文件结构复杂或异常，当前未提取到可用文本。`;
+  }
+
   if (parser === "pdf-best-effort") {
     return `${inferDomain(name)}相关资料已保存；PDF 未提取到可用文本，可能是扫描件或字体编码特殊。`;
   }
 
   return `${inferDomain(name)}相关资料已保存；当前格式暂未解析正文，需要后续接入专用解析器。`;
+}
+
+function parseKnowledgeFileSafely(buffer: Buffer, name: string, type: string, config: ReturnType<typeof getRuntimeConfig>) {
+  try {
+    return parseKnowledgeFile(buffer, name, type, {
+      maxZipEntries: config.maxZipEntries,
+      maxDecompressedBytes: config.maxDecompressedBytes,
+    });
+  } catch {
+    return { text: "", parser: "parse-error" };
+  }
 }
 
 function summarizeText(text: string, name: string, parser: string) {

@@ -2,7 +2,7 @@ import "server-only";
 
 import { getRuntimeConfig } from "@/lib/server/config";
 
-export type ChatProvider = "auto" | "local" | "minimax";
+export type ChatProvider = "auto" | "deepseek" | "minimax" | "local";
 export type ChatRole = "system" | "user" | "assistant";
 
 export type ChatMessage = {
@@ -22,6 +22,8 @@ type ProviderConfig = {
   apiKey: string;
   model: string;
   endpoint: string;
+  tokenParam?: "max_tokens" | "max_completion_tokens";
+  extraBody?: Record<string, unknown>;
 };
 
 export type ProviderStatus = {
@@ -35,30 +37,34 @@ export type ProviderStatus = {
 };
 
 const providerLabels: Record<Exclude<ChatProvider, "auto">, string> = {
-  local: "本地大模型",
+  deepseek: "DeepSeek",
   minimax: "MiniMax",
+  local: "本地大模型",
 };
 
 export function getConfiguredProviders() {
   return {
-    local: getLocalConfig(),
+    deepseek: getDeepSeekConfig(),
     minimax: getMiniMaxConfig(),
+    local: getLocalConfig(),
   };
 }
 
 export function getProviderStatuses(): ProviderStatus[] {
+  const deepSeekBaseUrl = process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com";
+  const deepSeekModel = process.env.DEEPSEEK_MODEL ?? "deepseek-v4-pro";
+  const minimaxBaseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimax.io/v1";
+  const minimaxModel = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
   const localBaseUrl = process.env.DANIU_LOCAL_LLM_BASE_URL ?? "";
   const localModel = process.env.DANIU_LOCAL_LLM_MODEL ?? "";
-  const minimaxBaseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimaxi.com/v1";
-  const minimaxModel = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
 
   return [
     {
-      provider: "local",
-      label: providerLabels.local,
-      configured: Boolean(localBaseUrl && process.env.DANIU_LOCAL_LLM_API_KEY && localModel),
-      model: localModel || "未设置",
-      baseUrl: localBaseUrl || "未设置",
+      provider: "deepseek",
+      label: providerLabels.deepseek,
+      configured: Boolean(process.env.DEEPSEEK_API_KEY),
+      model: deepSeekModel,
+      baseUrl: deepSeekBaseUrl,
       endpoint: "/chat/completions",
       priority: 1,
     },
@@ -68,8 +74,17 @@ export function getProviderStatuses(): ProviderStatus[] {
       configured: Boolean(process.env.MINIMAX_API_KEY),
       model: minimaxModel,
       baseUrl: minimaxBaseUrl,
-      endpoint: "/text/chatcompletion_v2",
+      endpoint: "/chat/completions",
       priority: 2,
+    },
+    {
+      provider: "local",
+      label: providerLabels.local,
+      configured: Boolean(localBaseUrl && process.env.DANIU_LOCAL_LLM_API_KEY && localModel),
+      model: localModel || "未设置",
+      baseUrl: localBaseUrl || "未设置",
+      endpoint: "/chat/completions",
+      priority: 3,
     },
   ];
 }
@@ -78,7 +93,7 @@ export async function completeChat(provider: ChatProvider, messages: ChatMessage
   const configs = getConfiguredProviders();
 
   if (provider === "auto") {
-    const attempts = [configs.local, configs.minimax].filter(Boolean) as ProviderConfig[];
+    const attempts = [configs.deepseek, configs.minimax, configs.local].filter(Boolean) as ProviderConfig[];
     return completeWithFallback(attempts, messages);
   }
 
@@ -111,6 +126,7 @@ async function callChatProvider(config: ProviderConfig, messages: ChatMessage[])
   const runtimeConfig = getRuntimeConfig();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), runtimeConfig.modelTimeoutMs);
+  const tokenParam = config.tokenParam ?? "max_tokens";
 
   let response: Response;
   try {
@@ -125,7 +141,8 @@ async function callChatProvider(config: ProviderConfig, messages: ChatMessage[])
         messages,
         stream: false,
         temperature: 0.3,
-        max_tokens: runtimeConfig.modelMaxTokens,
+        [tokenParam]: runtimeConfig.modelMaxTokens,
+        ...config.extraBody,
       }),
       signal: controller.signal,
     });
@@ -158,6 +175,43 @@ async function callChatProvider(config: ProviderConfig, messages: ChatMessage[])
   };
 }
 
+function getDeepSeekConfig(): ProviderConfig | null {
+  const baseUrl = process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com";
+  const apiKey = process.env.DEEPSEEK_API_KEY;
+  const model = process.env.DEEPSEEK_MODEL ?? "deepseek-v4-pro";
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    provider: "deepseek",
+    baseUrl,
+    apiKey,
+    model,
+    endpoint: "/chat/completions",
+    tokenParam: "max_completion_tokens",
+  };
+}
+
+function getMiniMaxConfig(): ProviderConfig | null {
+  const baseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimax.io/v1";
+  const apiKey = process.env.MINIMAX_API_KEY;
+  const model = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
+
+  if (!apiKey) {
+    return null;
+  }
+
+  return {
+    provider: "minimax",
+    baseUrl,
+    apiKey,
+    model,
+    endpoint: "/chat/completions",
+  };
+}
+
 function getLocalConfig(): ProviderConfig | null {
   const baseUrl = process.env.DANIU_LOCAL_LLM_BASE_URL;
   const apiKey = process.env.DANIU_LOCAL_LLM_API_KEY;
@@ -173,24 +227,6 @@ function getLocalConfig(): ProviderConfig | null {
     apiKey,
     model,
     endpoint: "/chat/completions",
-  };
-}
-
-function getMiniMaxConfig(): ProviderConfig | null {
-  const baseUrl = process.env.MINIMAX_BASE_URL ?? "https://api.minimaxi.com/v1";
-  const apiKey = process.env.MINIMAX_API_KEY;
-  const model = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
-
-  if (!apiKey) {
-    return null;
-  }
-
-  return {
-    provider: "minimax",
-    baseUrl,
-    apiKey,
-    model,
-    endpoint: "/text/chatcompletion_v2",
   };
 }
 
@@ -222,4 +258,3 @@ function getProviderError(data: unknown) {
 function joinUrl(baseUrl: string, endpoint: string) {
   return `${baseUrl.replace(/\/$/, "")}/${endpoint.replace(/^\//, "")}`;
 }
-

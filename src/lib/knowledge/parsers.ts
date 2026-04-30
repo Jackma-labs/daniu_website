@@ -8,6 +8,11 @@ export type ParsedKnowledgeFile = {
   parser: string;
 };
 
+export type KnowledgeParserLimits = {
+  maxZipEntries: number;
+  maxDecompressedBytes: number;
+};
+
 type ZipEntry = {
   name: string;
   compression: number;
@@ -16,7 +21,17 @@ type ZipEntry = {
   dataOffset: number;
 };
 
-export function parseKnowledgeFile(buffer: Buffer, name: string, mimeType: string): ParsedKnowledgeFile {
+const defaultParserLimits: KnowledgeParserLimits = {
+  maxZipEntries: 300,
+  maxDecompressedBytes: 200 * 1024 * 1024,
+};
+
+export function parseKnowledgeFile(
+  buffer: Buffer,
+  name: string,
+  mimeType: string,
+  limits: KnowledgeParserLimits = defaultParserLimits
+): ParsedKnowledgeFile {
   const ext = path.extname(name).toLowerCase();
 
   if (isTextLike(ext, mimeType)) {
@@ -28,14 +43,14 @@ export function parseKnowledgeFile(buffer: Buffer, name: string, mimeType: strin
 
   if (ext === ".docx") {
     return {
-      text: normalizeText(parseDocx(buffer)),
+      text: normalizeText(parseDocx(buffer, limits)),
       parser: "docx",
     };
   }
 
   if (ext === ".xlsx" || ext === ".xlsm") {
     return {
-      text: normalizeText(parseXlsx(buffer)),
+      text: normalizeText(parseXlsx(buffer, limits)),
       parser: "xlsx",
     };
   }
@@ -66,8 +81,8 @@ function isTextLike(ext: string, mimeType: string) {
   return mimeType.startsWith("text/") || [".txt", ".md", ".csv", ".json", ".html", ".xml", ".log"].includes(ext);
 }
 
-function parseDocx(buffer: Buffer) {
-  const entries = readZipEntries(buffer);
+function parseDocx(buffer: Buffer, limits: KnowledgeParserLimits) {
+  const entries = readZipEntries(buffer, limits);
   const files = [
     "word/document.xml",
     ...[...entries.keys()].filter((name) => /^word\/(header|footer|footnotes|endnotes)\d*\.xml$/.test(name)),
@@ -80,8 +95,8 @@ function parseDocx(buffer: Buffer) {
     .join("\n\n");
 }
 
-function parseXlsx(buffer: Buffer) {
-  const entries = readZipEntries(buffer);
+function parseXlsx(buffer: Buffer, limits: KnowledgeParserLimits) {
+  const entries = readZipEntries(buffer, limits);
   const sharedStrings = parseSharedStrings(entries.get("xl/sharedStrings.xml")?.toString("utf8") ?? "");
   const worksheetNames = [...entries.keys()].filter((name) => /^xl\/worksheets\/sheet\d+\.xml$/.test(name)).sort();
 
@@ -284,12 +299,23 @@ function decodeXml(value: string) {
     .replace(/&apos;/g, "'");
 }
 
-function readZipEntries(buffer: Buffer) {
+function readZipEntries(buffer: Buffer, limits: KnowledgeParserLimits) {
   const entries = new Map<string, Buffer>();
   const directoryOffset = findEndOfCentralDirectory(buffer);
   let offset = directoryOffset;
+  let entryCount = 0;
+  let totalDecompressedBytes = 0;
 
-  while (offset < buffer.length && buffer.readUInt32LE(offset) === 0x02014b50) {
+  while (offset + 4 <= buffer.length && buffer.readUInt32LE(offset) === 0x02014b50) {
+    if (offset + 46 > buffer.length) {
+      throw new Error("Office document structure is incomplete");
+    }
+
+    entryCount += 1;
+    if (entryCount > limits.maxZipEntries) {
+      throw new Error("Office document has too many internal files");
+    }
+
     const compression = buffer.readUInt16LE(offset + 10);
     const compressedSize = buffer.readUInt32LE(offset + 20);
     const uncompressedSize = buffer.readUInt32LE(offset + 24);
@@ -297,6 +323,11 @@ function readZipEntries(buffer: Buffer) {
     const extraLength = buffer.readUInt16LE(offset + 30);
     const commentLength = buffer.readUInt16LE(offset + 32);
     const localHeaderOffset = buffer.readUInt32LE(offset + 42);
+    const nameEnd = offset + 46 + fileNameLength;
+    if (nameEnd > buffer.length) {
+      throw new Error("Office document structure is incomplete");
+    }
+
     const name = buffer.subarray(offset + 46, offset + 46 + fileNameLength).toString("utf8").replace(/\\/g, "/");
 
     const entry: ZipEntry = {
@@ -307,7 +338,15 @@ function readZipEntries(buffer: Buffer) {
       dataOffset: getLocalDataOffset(buffer, localHeaderOffset),
     };
 
-    entries.set(name, readZipEntry(buffer, entry));
+    const remainingBytes = limits.maxDecompressedBytes - totalDecompressedBytes;
+    const content = readZipEntry(buffer, entry, remainingBytes);
+    totalDecompressedBytes += content.byteLength;
+
+    if (totalDecompressedBytes > limits.maxDecompressedBytes) {
+      throw new Error("Office document is too large after decompression");
+    }
+
+    entries.set(name, content);
     offset += 46 + fileNameLength + extraLength + commentLength;
   }
 
@@ -325,6 +364,10 @@ function findEndOfCentralDirectory(buffer: Buffer) {
 }
 
 function getLocalDataOffset(buffer: Buffer, localHeaderOffset: number) {
+  if (localHeaderOffset < 0 || localHeaderOffset + 30 > buffer.length) {
+    throw new Error("Office document structure is incomplete");
+  }
+
   if (buffer.readUInt32LE(localHeaderOffset) !== 0x04034b50) {
     throw new Error("Office document structure is incomplete");
   }
@@ -332,18 +375,35 @@ function getLocalDataOffset(buffer: Buffer, localHeaderOffset: number) {
   const fileNameLength = buffer.readUInt16LE(localHeaderOffset + 26);
   const extraLength = buffer.readUInt16LE(localHeaderOffset + 28);
 
-  return localHeaderOffset + 30 + fileNameLength + extraLength;
+  const dataOffset = localHeaderOffset + 30 + fileNameLength + extraLength;
+  if (dataOffset > buffer.length) {
+    throw new Error("Office document structure is incomplete");
+  }
+
+  return dataOffset;
 }
 
-function readZipEntry(buffer: Buffer, entry: ZipEntry) {
+function readZipEntry(buffer: Buffer, entry: ZipEntry, maxOutputBytes: number) {
+  if (maxOutputBytes <= 0 || entry.uncompressedSize > maxOutputBytes) {
+    throw new Error("Office document is too large after decompression");
+  }
+
+  if (entry.dataOffset + entry.compressedSize > buffer.length) {
+    throw new Error("Office document structure is incomplete");
+  }
+
   const compressed = buffer.subarray(entry.dataOffset, entry.dataOffset + entry.compressedSize);
 
   if (entry.compression === 0) {
+    if (compressed.byteLength > maxOutputBytes) {
+      throw new Error("Office document is too large after decompression");
+    }
+
     return compressed;
   }
 
   if (entry.compression === 8) {
-    const inflated = inflateRawSync(compressed);
+    const inflated = inflateRawSync(compressed, { maxOutputLength: maxOutputBytes });
     return entry.uncompressedSize ? inflated.subarray(0, entry.uncompressedSize) : inflated;
   }
 

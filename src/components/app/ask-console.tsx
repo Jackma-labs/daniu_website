@@ -27,15 +27,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from "@/components/ui/input-group";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/ai/providers";
 
-type Provider = "auto" | "local" | "minimax";
+type Provider = "auto" | "deepseek" | "minimax" | "local";
 
 type ChatResult = {
-  provider: "local" | "minimax";
+  provider: "deepseek" | "minimax" | "local";
   model: string;
   content: string;
   sources?: KnowledgeSource[];
@@ -84,14 +84,16 @@ const capabilities = [
 ];
 
 const providers: Array<{ value: Provider; label: string }> = [
-  { value: "auto", label: "自动" },
-  { value: "local", label: "本地" },
+  { value: "auto", label: "Auto · 云端优先" },
+  { value: "deepseek", label: "DeepSeek V4" },
   { value: "minimax", label: "MiniMax" },
+  { value: "local", label: "本地模型" },
 ];
 
 const providerNames = {
-  local: "本地大模型",
+  deepseek: "DeepSeek",
   minimax: "MiniMax",
+  local: "本地大模型",
 };
 
 const answerRules = [
@@ -506,24 +508,21 @@ export function AskConsole() {
                       <FileUp data-icon="inline-start" />
                       上传资料让它学
                     </InputGroupButton>
-                    <ToggleGroup
-                      value={[provider]}
-                      onValueChange={(value) => {
-                        const nextProvider = value[0] as Provider | undefined;
-                        if (nextProvider) {
-                          setProvider(nextProvider);
-                        }
-                      }}
-                      variant="outline"
-                      size="sm"
-                      className="hidden sm:flex"
-                    >
-                      {providers.map((item) => (
-                        <ToggleGroupItem key={item.value} value={item.value} aria-label={`切换到${item.label}模型`}>
-                          {item.label}
-                        </ToggleGroupItem>
-                      ))}
-                    </ToggleGroup>
+                    <Select value={provider} onValueChange={(value) => setProvider(value as Provider)}>
+                      <SelectTrigger size="sm" className="w-40" aria-label="选择模型">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="start" className="w-56">
+                        <SelectGroup>
+                          <SelectLabel>模型</SelectLabel>
+                          {providers.map((item) => (
+                            <SelectItem key={item.value} value={item.value}>
+                              {item.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex">

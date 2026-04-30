@@ -22,10 +22,13 @@ npm run dev
 | `DANIU_ADMIN_PASSWORD` | 本地管理员密码，生产环境必须修改 |
 | `DANIU_SESSION_SECRET` | 会话签名密钥，生产环境至少 32 位随机字符串 |
 | `DANIU_STORAGE_DIR` | 知识库、上传文件、审计日志存储目录 |
+| `DEEPSEEK_API_KEY` | DeepSeek API Key，自动模式优先使用 |
+| `DEEPSEEK_MODEL` | DeepSeek 模型，默认 `deepseek-v4-pro` |
+| `MINIMAX_API_KEY` | MiniMax API Key，自动模式第二优先级 |
 | `DANIU_LOCAL_LLM_BASE_URL` | 本地大模型 OpenAI 兼容接口地址 |
 | `DANIU_LOCAL_LLM_API_KEY` | 本地大模型 API Key |
 | `DANIU_LOCAL_LLM_MODEL` | 本地大模型名称 |
-| `MINIMAX_API_KEY` | MiniMax API Key，作为可选模型供应商 |
+| `DANIU_ENABLE_DEMO_DATA` | 是否启用内置演示知识，生产默认关闭 |
 | `DANIU_MAX_UPLOAD_MB` | 单文件上传大小限制 |
 | `DANIU_CHAT_RATE_LIMIT` | 每个窗口内的问答请求上限 |
 
@@ -34,7 +37,8 @@ npm run dev
 - `POST /api/auth/login`：账号密码登录，设置 HttpOnly 会话 Cookie。
 - `POST /api/auth/logout`：退出登录并写入审计日志。
 - `GET /api/auth/me`：查询当前登录用户。
-- `POST /api/chat`：问大牛，自动检索企业知识库并调用本地模型或 MiniMax。
+- `POST /api/chat`：问大牛，自动检索企业知识库并调用 DeepSeek、MiniMax 或本地模型。
+- 模型自动路由优先级：DeepSeek → MiniMax → 本地大模型。
 - `GET /api/knowledge`：读取资料列表和知识库统计。
 - `POST /api/knowledge/upload`：上传资料，校验数量、大小和扩展名后写入本地知识库。
 - `GET /api/knowledge/search`：检索知识库片段。
@@ -63,9 +67,12 @@ DANIU_STORAGE_DIR=/data/daniu
 DANIU_ADMIN_ACCOUNT=admin@your-company.local
 DANIU_ADMIN_PASSWORD=<change-me>
 DANIU_SESSION_SECRET=<32+ random chars>
+DEEPSEEK_API_KEY=<secret>
+DEEPSEEK_MODEL=deepseek-v4-pro
 DANIU_LOCAL_LLM_BASE_URL=http://your-local-model/v1
 DANIU_LOCAL_LLM_API_KEY=<secret>
 DANIU_LOCAL_LLM_MODEL=qwen2.5-32b-deepconf
+DANIU_ENABLE_DEMO_DATA=false
 ```
 
 健康检查：

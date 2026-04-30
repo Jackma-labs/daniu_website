@@ -25,6 +25,9 @@ export type RuntimeConfig = {
   loginRateLimit: number;
   chatRateLimit: number;
   uploadRateLimit: number;
+  enableDemoData: boolean;
+  maxZipEntries: number;
+  maxDecompressedBytes: number;
 };
 
 const defaultAllowedExtensions = [
@@ -71,6 +74,9 @@ export function getRuntimeConfig(): RuntimeConfig {
     loginRateLimit: readNumber("DANIU_LOGIN_RATE_LIMIT", 10, 1, 1000),
     chatRateLimit: readNumber("DANIU_CHAT_RATE_LIMIT", 60, 1, 10000),
     uploadRateLimit: readNumber("DANIU_UPLOAD_RATE_LIMIT", 20, 1, 10000),
+    enableDemoData: readBoolean("DANIU_ENABLE_DEMO_DATA", process.env.NODE_ENV !== "production"),
+    maxZipEntries: readNumber("DANIU_MAX_ZIP_ENTRIES", 300, 1, 2000),
+    maxDecompressedBytes: readNumber("DANIU_MAX_DECOMPRESSED_BYTES", 200 * 1024 * 1024, 1024 * 1024, 1024 * 1024 * 1024),
   };
 }
 
@@ -80,8 +86,9 @@ export function getProductionReadiness() {
   const isProduction = config.environment === "production";
   const sessionSecret = process.env.DANIU_SESSION_SECRET ?? "";
   const adminPassword = process.env.DANIU_ADMIN_PASSWORD ?? "";
-  const hasLocalModel = Boolean(process.env.DANIU_LOCAL_LLM_BASE_URL && process.env.DANIU_LOCAL_LLM_API_KEY && process.env.DANIU_LOCAL_LLM_MODEL);
+  const hasDeepSeek = Boolean(process.env.DEEPSEEK_API_KEY);
   const hasMiniMax = Boolean(process.env.MINIMAX_API_KEY);
+  const hasLocalModel = Boolean(process.env.DANIU_LOCAL_LLM_BASE_URL && process.env.DANIU_LOCAL_LLM_API_KEY && process.env.DANIU_LOCAL_LLM_MODEL);
 
   if (!sessionSecret || sessionSecret.length < 32 || sessionSecret === "daniu-dev-session-secret") {
     issues.push({
@@ -99,11 +106,11 @@ export function getProductionReadiness() {
     });
   }
 
-  if (!hasLocalModel && !hasMiniMax) {
+  if (!hasDeepSeek && !hasMiniMax && !hasLocalModel) {
     issues.push({
       level: isProduction ? "error" : "warning",
       code: "MODEL_PROVIDER_MISSING",
-      message: "至少需要配置一个模型服务：本地大模型或 MiniMax。",
+      message: "至少需要配置一个模型服务：DeepSeek、MiniMax 或本地大模型。",
     });
   }
 
@@ -143,6 +150,15 @@ function readList(name: string, fallback: string[]) {
     .filter(Boolean);
 
   return values.length ? values : fallback;
+}
+
+function readBoolean(name: string, fallback: boolean) {
+  const raw = process.env[name];
+  if (raw === undefined) {
+    return fallback;
+  }
+
+  return ["1", "true", "yes", "on"].includes(raw.trim().toLowerCase());
 }
 
 function normalizeExtension(value: string) {
