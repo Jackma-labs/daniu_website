@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
   ArrowUp,
@@ -137,6 +137,8 @@ function formatSessionTime(value: string) {
 }
 
 export function AskConsole() {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const initialTopicRef = useRef<string | null>(null);
   const [provider, setProvider] = useState<Provider>("auto");
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -148,6 +150,26 @@ export function AskConsole() {
   const messages = activeSession?.messages ?? [];
   const canSubmit = useMemo(() => input.trim().length > 0 && !isLoading, [input, isLoading]);
   const hasConversation = messages.length > 0;
+
+  useEffect(() => {
+    const topic = new URLSearchParams(window.location.search).get("topic");
+    if (!topic) {
+      return;
+    }
+
+    initialTopicRef.current = topic;
+    const timer = window.setTimeout(() => {
+      setActiveSessionId(null);
+      setInput(`请介绍「${topic}」这类资料里，大牛已经掌握了哪些重点？`);
+      window.history.replaceState(null, "", window.location.pathname);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ block: "end" });
+  }, [isLoading, messages.length]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -162,7 +184,7 @@ export function AskConsole() {
           : [];
 
         setSessions(validSessions);
-        setActiveSessionId(validSessions[0]?.id ?? null);
+        setActiveSessionId(initialTopicRef.current ? null : validSessions[0]?.id ?? null);
       } catch {
         setSessions([]);
         setActiveSessionId(null);
@@ -373,7 +395,7 @@ export function AskConsole() {
       {hasConversation && (
         <Card className="mt-6 w-full rounded-3xl border-foreground/10 text-left shadow-sm">
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[48dvh] rounded-3xl">
+            <ScrollArea className="h-[46dvh] min-h-72 max-h-[520px] rounded-3xl">
               <div className="flex flex-col gap-4 p-4 md:p-5">
                 {messages.map((message) => (
                   <div key={message.id} className={cn("flex gap-3", message.role === "user" && "justify-end")}>
@@ -446,6 +468,7 @@ export function AskConsole() {
                     </div>
                   </div>
                 )}
+                <div ref={messagesEndRef} />
               </div>
             </ScrollArea>
           </CardContent>

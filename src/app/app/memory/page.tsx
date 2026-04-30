@@ -1,4 +1,5 @@
-﻿import {
+import Link from "next/link";
+import {
   ArrowUpRight,
   BookOpenText,
   CircleDollarSign,
@@ -85,40 +86,47 @@ export default function MemoryPage() {
 
         <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {memories.map((item) => (
-            <Card key={item.title} className="group gap-0 overflow-hidden rounded-2xl border-foreground/10 bg-card p-0 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-foreground/5">
-              <CardContent className="flex h-[330px] flex-col p-3.5">
-                <div className={`relative flex flex-1 flex-col overflow-hidden rounded-xl border border-foreground/10 p-4 ${item.tone}`}>
-                  <div className="pointer-events-none absolute inset-x-4 top-16 h-px bg-foreground/10" />
-                  <div className="pointer-events-none absolute inset-y-4 right-14 w-px bg-foreground/10" />
-                  <div className="flex items-start justify-between">
-                    <span className="flex size-10 items-center justify-center rounded-xl border bg-background/70 shadow-sm backdrop-blur">
-                      <item.icon className="size-4.5 text-foreground/80" strokeWidth={1.6} />
-                    </span>
-                    <Badge variant="outline" className="rounded-full bg-background/60 px-2 text-[10px] backdrop-blur">
-                      掌握 {item.level}
-                    </Badge>
-                  </div>
+            <Link
+              key={item.title}
+              href={`/app?topic=${encodeURIComponent(item.title)}`}
+              className="group block rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+              aria-label={`向大牛询问${item.title}`}
+            >
+              <Card className="gap-0 overflow-hidden rounded-2xl border-foreground/10 bg-card p-0 shadow-sm transition duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg group-hover:shadow-foreground/5">
+                <CardContent className="flex h-[330px] flex-col p-3.5">
+                  <div className={`relative flex flex-1 flex-col overflow-hidden rounded-xl border border-foreground/10 p-4 ${item.tone}`}>
+                    <div className="pointer-events-none absolute inset-x-4 top-16 h-px bg-foreground/10" />
+                    <div className="pointer-events-none absolute inset-y-4 right-14 w-px bg-foreground/10" />
+                    <div className="flex items-start justify-between">
+                      <span className="flex size-10 items-center justify-center rounded-xl border bg-background/70 shadow-sm backdrop-blur">
+                        <item.icon className="size-4.5 text-foreground/80" strokeWidth={1.6} />
+                      </span>
+                      <Badge variant="outline" className="rounded-full bg-background/60 px-2 text-[10px] backdrop-blur">
+                        掌握 {item.level}
+                      </Badge>
+                    </div>
 
-                  <div className="mt-auto">
-                    <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Daniu Memory</div>
-                    <div className="mt-2 flex items-end gap-1.5">
-                      <strong className="text-4xl font-semibold tracking-tight">{item.count}</strong>
-                      <span className="pb-1 text-sm font-medium text-muted-foreground">{item.unit}</span>
+                    <div className="mt-auto">
+                      <div className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Daniu Memory</div>
+                      <div className="mt-2 flex items-end gap-1.5">
+                        <strong className="text-4xl font-semibold tracking-tight">{item.count}</strong>
+                        <span className="pb-1 text-sm font-medium text-muted-foreground">{item.unit}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex items-start justify-between gap-4 pt-3.5">
-                  <div>
-                    <h2 className="text-sm font-medium tracking-tight">{item.title}</h2>
-                    <p className="mt-1 text-xs text-muted-foreground">{item.meta}</p>
+                  <div className="flex items-start justify-between gap-4 pt-3.5">
+                    <div>
+                      <h2 className="text-sm font-medium tracking-tight">{item.title}</h2>
+                      <p className="mt-1 text-xs text-muted-foreground">{item.meta}</p>
+                    </div>
+                    <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
+                      <ArrowUpRight className="size-3.5" strokeWidth={1.8} />
+                    </span>
                   </div>
-                  <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-full border text-muted-foreground transition group-hover:bg-primary group-hover:text-primary-foreground">
-                    <ArrowUpRight className="size-3.5" strokeWidth={1.8} />
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </div>
