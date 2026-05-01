@@ -11,63 +11,25 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { memoryCategories, type MemoryCategory } from "@/lib/knowledge/memory-categories";
 
-const memories = [
-  {
-    title: "产品资料",
-    count: "328",
-    unit: "条",
-    meta: "常被引用 126 次",
-    level: "92%",
-    icon: BookOpenText,
-    tone: "bg-[radial-gradient(circle_at_20%_20%,rgba(15,23,42,0.10),transparent_32%),linear-gradient(180deg,#fafafa,#f4f4f5)]",
-  },
-  {
-    title: "售后案例",
-    count: "512",
-    unit: "条",
-    meta: "还有 9 个问题待学习",
-    level: "86%",
-    icon: Wrench,
-    tone: "bg-[radial-gradient(circle_at_80%_18%,rgba(39,39,42,0.12),transparent_34%),linear-gradient(180deg,#fbfbfb,#f1f5f9)]",
-  },
-  {
-    title: "报价规则",
-    count: "86",
-    unit: "条",
-    meta: "建议本周更新",
-    level: "74%",
-    icon: CircleDollarSign,
-    tone: "bg-[radial-gradient(circle_at_18%_80%,rgba(82,82,91,0.14),transparent_34%),linear-gradient(180deg,#fafafa,#f5f5f4)]",
-  },
-  {
-    title: "项目方案",
-    count: "147",
-    unit: "条",
-    meta: "最近更新 2 天前",
-    level: "81%",
-    icon: FileStack,
-    tone: "bg-[radial-gradient(circle_at_76%_76%,rgba(63,63,70,0.14),transparent_34%),linear-gradient(180deg,#ffffff,#f4f4f5)]",
-  },
-  {
-    title: "公司制度",
-    count: "72",
-    unit: "条",
-    meta: "命中率 91%",
-    level: "91%",
-    icon: ShieldCheck,
-    tone: "bg-[radial-gradient(circle_at_24%_24%,rgba(24,24,27,0.10),transparent_32%),linear-gradient(180deg,#fbfbfb,#f8fafc)]",
-  },
-  {
-    title: "专家访谈",
-    count: "39",
-    unit: "条",
-    meta: "来自 4 位专家",
-    level: "69%",
-    icon: UserRoundSearch,
-    tone: "bg-[radial-gradient(circle_at_72%_26%,rgba(15,23,42,0.12),transparent_34%),linear-gradient(180deg,#fafafa,#f3f4f6)]",
-  },
-];
+const icons: Record<MemoryCategory["slug"], typeof BookOpenText> = {
+  product: BookOpenText,
+  "after-sales": Wrench,
+  pricing: CircleDollarSign,
+  projects: FileStack,
+  rules: ShieldCheck,
+  experts: UserRoundSearch,
+};
+
+const tones: Record<MemoryCategory["slug"], string> = {
+  product: "bg-[radial-gradient(circle_at_20%_20%,rgba(15,23,42,0.10),transparent_32%),linear-gradient(180deg,#fafafa,#f4f4f5)]",
+  "after-sales": "bg-[radial-gradient(circle_at_80%_18%,rgba(39,39,42,0.12),transparent_34%),linear-gradient(180deg,#fbfbfb,#f1f5f9)]",
+  pricing: "bg-[radial-gradient(circle_at_18%_80%,rgba(82,82,91,0.14),transparent_34%),linear-gradient(180deg,#fafafa,#f5f5f4)]",
+  projects: "bg-[radial-gradient(circle_at_76%_76%,rgba(63,63,70,0.14),transparent_34%),linear-gradient(180deg,#ffffff,#f4f4f5)]",
+  rules: "bg-[radial-gradient(circle_at_24%_24%,rgba(24,24,27,0.10),transparent_32%),linear-gradient(180deg,#fbfbfb,#f8fafc)]",
+  experts: "bg-[radial-gradient(circle_at_72%_26%,rgba(15,23,42,0.12),transparent_34%),linear-gradient(180deg,#fafafa,#f3f4f6)]",
+};
 
 export default function MemoryPage() {
   return (
@@ -85,21 +47,24 @@ export default function MemoryPage() {
         </div>
 
         <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {memories.map((item) => (
+          {memoryCategories.map((item) => {
+            const Icon = icons[item.slug];
+
+            return (
             <Link
               key={item.title}
-              href={`/app?topic=${encodeURIComponent(item.title)}`}
+              href={`/app/memory/${item.slug}`}
               className="group block rounded-2xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-              aria-label={`向大牛询问${item.title}`}
+              aria-label={`查看${item.title}`}
             >
               <Card className="gap-0 overflow-hidden rounded-2xl border-foreground/10 bg-card p-0 shadow-sm transition duration-300 group-hover:-translate-y-0.5 group-hover:shadow-lg group-hover:shadow-foreground/5">
                 <CardContent className="flex h-[330px] flex-col p-3.5">
-                  <div className={`relative flex flex-1 flex-col overflow-hidden rounded-xl border border-foreground/10 p-4 ${item.tone}`}>
+                  <div className={`relative flex flex-1 flex-col overflow-hidden rounded-xl border border-foreground/10 p-4 ${tones[item.slug]}`}>
                     <div className="pointer-events-none absolute inset-x-4 top-16 h-px bg-foreground/10" />
                     <div className="pointer-events-none absolute inset-y-4 right-14 w-px bg-foreground/10" />
                     <div className="flex items-start justify-between">
                       <span className="flex size-10 items-center justify-center rounded-xl border bg-background/70 shadow-sm backdrop-blur">
-                        <item.icon className="size-4.5 text-foreground/80" strokeWidth={1.6} />
+                        <Icon className="size-4.5 text-foreground/80" strokeWidth={1.6} />
                       </span>
                       <Badge variant="outline" className="rounded-full bg-background/60 px-2 text-[10px] backdrop-blur">
                         掌握 {item.level}
@@ -127,7 +92,8 @@ export default function MemoryPage() {
                 </CardContent>
               </Card>
             </Link>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>

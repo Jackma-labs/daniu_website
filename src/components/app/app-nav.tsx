@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Brain, ClipboardList, MessageCircle } from "lucide-react";
+import { BookOpen, Brain, ClipboardList, MessageCircle, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -10,6 +10,7 @@ const navItems = [
   { label: "问大牛", href: "/app", icon: MessageCircle },
   { label: "喂资料", href: "/app/learn", icon: BookOpen },
   { label: "牛大脑", href: "/app/memory", icon: Brain },
+  { label: "大牛库", href: "/app/skills", icon: Sparkles },
   { label: "待学习", href: "/app/gaps", icon: ClipboardList },
 ];
 
@@ -47,7 +48,7 @@ export function AppNav() {
       </nav>
 
       <nav
-        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-2xl border bg-background/95 p-1 shadow-xl shadow-foreground/10 backdrop-blur md:hidden"
+        className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-5 rounded-2xl border bg-background/95 p-1 shadow-xl shadow-foreground/10 backdrop-blur md:hidden"
         aria-label="移动端主导航"
       >
         {navItems.map((item) => {

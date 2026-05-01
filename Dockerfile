@@ -18,8 +18,8 @@ ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 ENV DANIU_STORAGE_DIR=/data/daniu
 
-RUN addgroup -S nodejs \
-  && adduser -S nextjs -G nodejs \
+RUN addgroup -S -g 1001 nodejs \
+  && adduser -S -u 1001 nextjs -G nodejs \
   && mkdir -p /data/daniu \
   && chown -R nextjs:nodejs /data/daniu
 

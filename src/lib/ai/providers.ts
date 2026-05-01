@@ -3,6 +3,7 @@ import "server-only";
 import { getRuntimeConfig } from "@/lib/server/config";
 
 export type ChatProvider = "auto" | "deepseek" | "minimax" | "local";
+type RuntimeProvider = Exclude<ChatProvider, "auto">;
 export type ChatRole = "system" | "user" | "assistant";
 
 export type ChatMessage = {
@@ -11,13 +12,13 @@ export type ChatMessage = {
 };
 
 export type ChatCompletion = {
-  provider: Exclude<ChatProvider, "auto">;
+  provider: RuntimeProvider;
   model: string;
   content: string;
 };
 
 type ProviderConfig = {
-  provider: Exclude<ChatProvider, "auto">;
+  provider: RuntimeProvider;
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -27,7 +28,7 @@ type ProviderConfig = {
 };
 
 export type ProviderStatus = {
-  provider: Exclude<ChatProvider, "auto">;
+  provider: RuntimeProvider;
   label: string;
   configured: boolean;
   model: string;
@@ -36,11 +37,13 @@ export type ProviderStatus = {
   priority: number;
 };
 
-const providerLabels: Record<Exclude<ChatProvider, "auto">, string> = {
+const providerLabels: Record<RuntimeProvider, string> = {
   deepseek: "DeepSeek",
   minimax: "MiniMax",
   local: "本地大模型",
 };
+
+const defaultAutoProviderOrder: RuntimeProvider[] = ["deepseek", "minimax", "local"];
 
 export function getConfiguredProviders() {
   return {
@@ -57,8 +60,10 @@ export function getProviderStatuses(): ProviderStatus[] {
   const minimaxModel = process.env.MINIMAX_MODEL ?? "MiniMax-M2.5";
   const localBaseUrl = process.env.DANIU_LOCAL_LLM_BASE_URL ?? "";
   const localModel = process.env.DANIU_LOCAL_LLM_MODEL ?? "";
+  const autoProviderOrder = getAutoProviderOrder();
+  const priorityOf = (provider: RuntimeProvider) => autoProviderOrder.indexOf(provider) + 1 || defaultAutoProviderOrder.indexOf(provider) + 1;
 
-  return [
+  const statuses: ProviderStatus[] = [
     {
       provider: "deepseek",
       label: providerLabels.deepseek,
@@ -66,7 +71,7 @@ export function getProviderStatuses(): ProviderStatus[] {
       model: deepSeekModel,
       baseUrl: deepSeekBaseUrl,
       endpoint: "/chat/completions",
-      priority: 1,
+      priority: priorityOf("deepseek"),
     },
     {
       provider: "minimax",
@@ -75,7 +80,7 @@ export function getProviderStatuses(): ProviderStatus[] {
       model: minimaxModel,
       baseUrl: minimaxBaseUrl,
       endpoint: "/chat/completions",
-      priority: 2,
+      priority: priorityOf("minimax"),
     },
     {
       provider: "local",
@@ -84,16 +89,20 @@ export function getProviderStatuses(): ProviderStatus[] {
       model: localModel || "未设置",
       baseUrl: localBaseUrl || "未设置",
       endpoint: "/chat/completions",
-      priority: 3,
+      priority: priorityOf("local"),
     },
   ];
+
+  return statuses.sort((a, b) => a.priority - b.priority);
 }
 
 export async function completeChat(provider: ChatProvider, messages: ChatMessage[]) {
   const configs = getConfiguredProviders();
 
   if (provider === "auto") {
-    const attempts = [configs.deepseek, configs.minimax, configs.local].filter(Boolean) as ProviderConfig[];
+    const attempts = getAutoProviderOrder()
+      .map((item) => configs[item])
+      .filter(Boolean) as ProviderConfig[];
     return completeWithFallback(attempts, messages);
   }
 
@@ -103,6 +112,16 @@ export async function completeChat(provider: ChatProvider, messages: ChatMessage
   }
 
   return callChatProvider(config, messages);
+}
+
+export function getAutoProviderOrder(): RuntimeProvider[] {
+  const raw = process.env.DANIU_AUTO_PROVIDER_ORDER;
+  const values = (raw ? raw.split(",") : defaultAutoProviderOrder)
+    .map((value) => value.trim().toLowerCase())
+    .filter(isRuntimeProvider);
+  const uniqueValues = Array.from(new Set(values));
+
+  return uniqueValues.length ? uniqueValues : defaultAutoProviderOrder;
 }
 
 async function completeWithFallback(configs: ProviderConfig[], messages: ChatMessage[]) {
@@ -253,6 +272,10 @@ function getProviderError(data: unknown) {
   const maybe = data as { error?: { message?: unknown }; message?: unknown; base_resp?: { status_msg?: unknown } };
   const message = maybe.error?.message ?? maybe.message ?? maybe.base_resp?.status_msg;
   return typeof message === "string" ? message : null;
+}
+
+function isRuntimeProvider(value: string): value is RuntimeProvider {
+  return value === "deepseek" || value === "minimax" || value === "local";
 }
 
 function joinUrl(baseUrl: string, endpoint: string) {

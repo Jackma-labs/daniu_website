@@ -8,7 +8,6 @@ import {
   Bot,
   CircleDollarSign,
   ClipboardList,
-  CornerDownLeft,
   FileSearch,
   FileUp,
   GraduationCap,
@@ -22,6 +21,7 @@ import {
   Trash2,
   Wrench,
 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -31,20 +31,29 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/ai/providers";
+import {
+  daniuPersonaStorageKey,
+  daniuPersonas,
+  defaultDaniuPersonaIds,
+  getEnabledDaniuPersonas,
+  type DaniuPersona,
+} from "@/lib/skills/daniu-personas";
 
 type Provider = "auto" | "deepseek" | "minimax" | "local";
 
 type ChatResult = {
-  provider: "deepseek" | "minimax" | "local";
+  provider: "system" | "deepseek" | "minimax" | "local";
   model: string;
   content: string;
   sources?: KnowledgeSource[];
+  persona?: { id: string; name: string };
 };
 
 type UiMessage = ChatMessage & {
   id: string;
   provider?: ChatResult["provider"];
   model?: string;
+  persona?: ChatResult["persona"];
   sources?: KnowledgeSource[];
   error?: boolean;
 };
@@ -84,13 +93,14 @@ const capabilities = [
 ];
 
 const providers: Array<{ value: Provider; label: string }> = [
-  { value: "auto", label: "Auto · 云端优先" },
+  { value: "auto", label: "Auto" },
   { value: "deepseek", label: "DeepSeek V4" },
   { value: "minimax", label: "MiniMax" },
   { value: "local", label: "本地模型" },
 ];
 
 const providerNames = {
+  system: "大牛",
   deepseek: "DeepSeek",
   minimax: "MiniMax",
   local: "本地大模型",
@@ -142,6 +152,9 @@ export function AskConsole() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const initialTopicRef = useRef<string | null>(null);
   const [provider, setProvider] = useState<Provider>("auto");
+  const [personaId, setPersonaId] = useState("enterprise");
+  const [personaCatalog, setPersonaCatalog] = useState<DaniuPersona[]>(daniuPersonas);
+  const [enabledPersonaIds, setEnabledPersonaIds] = useState<string[]>(defaultDaniuPersonaIds);
   const [input, setInput] = useState("");
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
@@ -150,7 +163,8 @@ export function AskConsole() {
 
   const activeSession = useMemo(() => sessions.find((session) => session.id === activeSessionId), [activeSessionId, sessions]);
   const messages = activeSession?.messages ?? [];
-  const canSubmit = useMemo(() => input.trim().length > 0 && !isLoading, [input, isLoading]);
+  const enabledPersonas = useMemo(() => getEnabledDaniuPersonas(enabledPersonaIds, personaCatalog), [enabledPersonaIds, personaCatalog]);
+  const activePersonaId = enabledPersonas.some((persona) => persona.id === personaId) ? personaId : enabledPersonas[0]?.id ?? "enterprise";
   const hasConversation = messages.length > 0;
 
   useEffect(() => {
@@ -186,7 +200,7 @@ export function AskConsole() {
           : [];
 
         setSessions(validSessions);
-        setActiveSessionId(initialTopicRef.current ? null : validSessions[0]?.id ?? null);
+        setActiveSessionId(null);
       } catch {
         setSessions([]);
         setActiveSessionId(null);
@@ -196,6 +210,43 @@ export function AskConsole() {
     }, 0);
 
     return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    const readPersonas = () => {
+      try {
+        const stored = window.localStorage.getItem(daniuPersonaStorageKey);
+        const parsed = stored ? (JSON.parse(stored) as string[]) : defaultDaniuPersonaIds;
+        const nextIds = Array.isArray(parsed) && parsed.length ? parsed.slice(0, 3) : defaultDaniuPersonaIds;
+        setEnabledPersonaIds(nextIds);
+        setPersonaId((current) => (nextIds.includes(current) ? current : nextIds[0]));
+      } catch {
+        setEnabledPersonaIds(defaultDaniuPersonaIds);
+        setPersonaId("enterprise");
+      }
+    };
+
+    readPersonas();
+    window.addEventListener("storage", readPersonas);
+
+    return () => window.removeEventListener("storage", readPersonas);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetch("/api/skills")
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { personas?: DaniuPersona[] } | null) => {
+        if (!cancelled && Array.isArray(data?.personas) && data.personas.length) {
+          setPersonaCatalog(data.personas);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -238,6 +289,7 @@ export function AskConsole() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           provider,
+          personaId: activePersonaId,
           messages: nextMessages.map(({ role, content: messageContent }) => ({ role, content: messageContent })),
         }),
       });
@@ -254,6 +306,7 @@ export function AskConsole() {
         content: result.content,
         provider: result.provider,
         model: result.model,
+        persona: result.persona,
         sources: result.sources,
       };
 
@@ -425,6 +478,11 @@ export function AskConsole() {
                                 {providerNames[message.provider]} · {message.model}
                               </Badge>
                             )}
+                            {message.persona ? (
+                              <Badge variant="secondary" className="rounded-full text-[11px]">
+                                {message.persona.name}
+                              </Badge>
+                            ) : null}
                             {message.sources?.length ? (
                               <Badge variant="secondary" className="rounded-full text-[11px]">
                                 引用 {message.sources.length} 份资料
@@ -508,7 +566,7 @@ export function AskConsole() {
                       <FileUp data-icon="inline-start" />
                       上传资料让它学
                     </InputGroupButton>
-                    <Select value={provider} onValueChange={(value) => setProvider(value as Provider)}>
+                    <Select value={provider} onValueChange={(value) => value && setProvider(value as Provider)}>
                       <SelectTrigger size="sm" className="w-40" aria-label="选择模型">
                         <SelectValue />
                       </SelectTrigger>
@@ -523,18 +581,35 @@ export function AskConsole() {
                         </SelectGroup>
                       </SelectContent>
                     </Select>
+                    <Select value={activePersonaId} onValueChange={(value) => value && setPersonaId(value)}>
+                      <SelectTrigger size="sm" className="w-40" aria-label="选择大牛视角">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent align="start" className="w-72">
+                        <SelectGroup>
+                          <SelectLabel>视角</SelectLabel>
+                          {enabledPersonas.map((persona) => (
+                            <SelectItem key={persona.id} value={persona.id} className="h-auto py-2">
+                              <Avatar size="sm">
+                                <AvatarFallback>{persona.avatar}</AvatarFallback>
+                              </Avatar>
+                              <span className="flex min-w-0 flex-col items-start">
+                                <span className="text-sm">{persona.name}</span>
+                                <span className="truncate text-xs text-muted-foreground">{persona.title}</span>
+                              </span>
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="hidden items-center gap-1 text-xs text-muted-foreground md:inline-flex">
-                      <CornerDownLeft className="size-3.5" strokeWidth={1.8} />
-                      Enter 发送
-                    </span>
                     {hasConversation && (
                       <InputGroupButton type="button" variant="ghost" size="icon-sm" aria-label="重新开始" onClick={resetConversation}>
                         <RotateCcw />
                       </InputGroupButton>
                     )}
-                    <InputGroupButton type="submit" variant="default" size="icon-sm" aria-label="发送" disabled={!canSubmit}>
+                    <InputGroupButton type="submit" variant="default" size="icon-sm" aria-label="发送" disabled={isLoading}>
                       {isLoading ? <Spinner /> : <ArrowUp />}
                     </InputGroupButton>
                   </div>
